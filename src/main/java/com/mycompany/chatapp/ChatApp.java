@@ -4,7 +4,7 @@
 
 package com.mycompany.chatapp;
 
-import javax.swing.JOptionPane;
+import java.util.Scanner;
 /**
  *
  * @author Student
@@ -13,38 +13,50 @@ public class ChatApp {
 
     public static void main(String[] args) {
         
-       Login loginSystem = new Login();
-        
-        JOptionPane.showMessageDialog(null, "  Welcome to the Chat App Registration   ");
-        
-        String firstName = JOptionPane.showInputDialog("Enter First Name: ");
-        
-        String lastName = JOptionPane.showInputDialog("Enter Last Name: ");
-        
-        String username = JOptionPane.showInputDialog("Enter Username (must contain '_' and be <= 5 chars): ");
+         Scanner scanner = new Scanner(System.in);
+        Login loginSystem = new Login();
 
-        String password = JOptionPane.showInputDialog("Enter Password (8+ chars, 1 Capital, 1 Number, 1 Special): ");
-        
-        String cellNumber = JOptionPane.showInputDialog("Enter Cell Phone Number (e.g., +27838968976): ");
+        System.out.println("=== Welcome to the Chat App Registration ===");
+
+        System.out.print("Enter First Name: ");
+        String firstName = scanner.nextLine();
+
+        System.out.print("Enter Last Name: ");
+        String lastName = scanner.nextLine();
+
+        System.out.print("Enter Username (must contain '_' and be <= 5 chars): ");
+        String username = scanner.nextLine();
+
+        System.out.print("Enter Password (8+ chars, 1 Capital, 1 Number, 1 Special): ");
+        String password = scanner.nextLine();
+
+        System.out.print("Enter Cell Phone Number (e.g., +27838968976): ");
+        String cellNumber = scanner.nextLine();
 
         String registrationMessage = loginSystem.registerUser(username, password, cellNumber, firstName, lastName);
-        JOptionPane.showMessageDialog(null, registrationMessage, "Registration Status", JOptionPane.INFORMATION_MESSAGE);
-        
+        System.out.println("\n--- Registration Status ---");
+        System.out.println(registrationMessage);
+
         if (registrationMessage.contains("successfully")) {
             
-             JOptionPane.showMessageDialog(null,"  Login  ");
-             
-            String loginUser = JOptionPane.showInputDialog("Enter Username: ");
+            System.out.println("\n=== Login ===");
+            System.out.print("Enter Username: ");
+            String loginUser = scanner.nextLine();
 
-            String loginPass = JOptionPane.showInputDialog("Enter Password: ");
+            System.out.print("Enter Password: ");
+            String loginPass = scanner.nextLine();
 
             boolean isAuthenticated = loginSystem.loginUser(loginUser, loginPass);
             
             String loginStatusMessage = loginSystem.returnLoginStatus(isAuthenticated);
-            JOptionPane.showMessageDialog(null, loginStatusMessage, "Login Status", JOptionPane.INFORMATION_MESSAGE);
+            System.out.println("\n--- Login Status ---");
+            System.out.println(loginStatusMessage);
             
         } else {
-            JOptionPane.showMessageDialog(null, "Registration failed. Please restart the application and try again.", "Error", JOptionPane.ERROR_MESSAGE);
+            System.out.println("\nRegistration failed. Please restart the application and try again.");
         }
+
+        scanner.close();
     }
 }
+        
