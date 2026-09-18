@@ -13,7 +13,7 @@ public class ChatApp {
 
     public static void main(String[] args) {
         
-        Login loginSystem = new Login();
+       Login loginSystem = new Login();
         
         JOptionPane.showMessageDialog(null, "  Welcome to the Chat App Registration   ");
         
@@ -48,4 +48,3 @@ public class ChatApp {
         }
     }
 }
-    
