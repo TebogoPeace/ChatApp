@@ -121,6 +121,7 @@ public class ChatApp {
 
                 default:
                     System.out.println("Invalid option. Try again.");
+                    
             }
         }
     }
