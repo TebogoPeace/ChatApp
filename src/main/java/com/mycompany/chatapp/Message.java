@@ -150,6 +150,7 @@ public class Message {
             writer.write(jsonArray.toString(4));
         } catch (IOException e) {
             System.out.println("Error saving to file.");
+            
         }
     }
     
