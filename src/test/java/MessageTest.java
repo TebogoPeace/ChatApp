@@ -54,5 +54,6 @@ public class MessageTest {
     public void testMessageIDLength() {
         Message msg = new Message(1, "+27718693002", "Test");
         assertTrue(msg.checkMessageID());
+        
     }
 }
