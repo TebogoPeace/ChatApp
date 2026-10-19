@@ -100,5 +100,6 @@ public class LoginTest {
         boolean isLoggedIn = login.loginUser("kyl_1", "WrongPassword123!");
         String result = login.returnLoginStatus(isLoggedIn);
         assertEquals("Username or password incorrect, please try again.", result);
+        
     }
 }
