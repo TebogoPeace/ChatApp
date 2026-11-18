@@ -3,162 +3,338 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package com.mycompany.chatapp;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Scanner;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Random;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 /**
  *
  * @author Student
  */
+
 public class Message {
-     private String messageID;
+
+    private String messageID;
     private int messageNumber;
     private String recipient;
     private String messageText;
     private String messageHash;
+    private String sender;
+    private boolean processed = false;
 
-    private static int totalMessages = 0;
-    private static List<String> sentMessagesList = new ArrayList<>();
-    private static final String JSON_FILE = "messages.json";
+    private static int totalMessagesSent = 0;
 
-    public Message() {
-    }
+    public static String[] sentMessages = new String[0];
+    public static String[] disregardedMessages = new String[0];
+    public static String[] storedMessages = new String[0];
+    public static String[] messageHashes = new String[0];
+    public static String[] messageIDs = new String[0];
 
-    public Message(int messageNumber, String recipient, String messageText) {
-        this.messageNumber = messageNumber;
-        this.recipient = recipient;
-        this.messageText = messageText;
-        this.messageID = generateMessageID();
-        this.messageHash = createMessageHash();
-    }
+    private static final ArrayList<Message> sentDetails = new ArrayList<>();
+    private static final ArrayList<Message> storedDetails = new ArrayList<>();
+    private static final ArrayList<Message> allDetails = new ArrayList<>();
 
-    private String generateMessageID() {
-        Random rand = new Random();
-        long id = (long) (rand.nextDouble() * 9_000_000_000L) + 1_000_000_000L;
-        return String.valueOf(id);
+    private static final String FILE_NAME = "stored_messages.json";
+
+    public Message() {}
+
+    public String generateMessageID() {
+        Random random = new Random();
+        StringBuilder id = new StringBuilder();
+        id.append(random.nextInt(9) + 1);
+        for (int i = 0; i < 9; i++) id.append(random.nextInt(10));
+        this.messageID = id.toString();
+        return messageID;
     }
 
     public boolean checkMessageID() {
-        return this.messageID != null && this.messageID.length() <= 10;
+        return messageID != null && messageID.matches("\\d{1,10}");
     }
 
-    public String checkRecipientCell() {
-        if (this.recipient != null && this.recipient.matches("^\\+\\d{10,12}$") && this.recipient.length() <= 13) {
+    public String checkRecipientCell(String cell) {
+        if (cell != null && cell.matches("^\\+27\\d{9}$")) {
             return "Cell phone number successfully captured.";
         }
         return "Cell phone number is incorrectly formatted or does not contain an international code. Please correct the number and try again.";
     }
 
+    public String checkMessageLength(String text) {
+        if (text == null) return "Message cannot be empty.";
+        if (text.length() <= 250) return "Message ready to send.";
+        return "Message exceeds 250 characters by " + (text.length() - 250) + "; please reduce the size.";
+    }
+
     public String createMessageHash() {
-        if (this.messageText == null || this.messageText.trim().isEmpty()) {
-            return this.messageID.substring(0, 2) + ":" + this.messageNumber + ":EMPTY";
-        }
-        
-        String[] words = this.messageText.trim().split("\\s+");
-        String firstWord = words[0].replaceAll("[^a-zA-Z]", "").toUpperCase();
-        String lastWord = words[words.length - 1].replaceAll("[^a-zA-Z]", "").toUpperCase();
-        String firstTwoID = this.messageID.substring(0, 2);
-        
-        return firstTwoID + ":" + this.messageNumber + ":" + firstWord + lastWord;
+        String firstTwo = messageID.substring(0, 2);
+        String cleaned = messageText.trim();
+        String[] words = cleaned.split("\\s+");
+        String firstWord = words[0].replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+        String lastWord = words[words.length - 1].replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+        messageHash = firstTwo + ":" + messageNumber + ":" + firstWord + lastWord;
+        return messageHash;
     }
 
-    public String checkMessageLength() {
-        if (this.messageText.length() <= 250) {
-            return "Message ready to send.";
+    private static String[] addToArray(String[] array, String value) {
+        String[] newArray = new String[array.length + 1];
+        for (int i = 0; i < array.length; i++) newArray[i] = array[i];
+        newArray[array.length] = value;
+        return newArray;
+    }
+
+    public String SentMessage(String option) {
+        if (processed) return "This message has already been processed.";
+        if (messageHash == null) createMessageHash();
+
+        if (option.equalsIgnoreCase("Send")) {
+            sentMessages = addToArray(sentMessages, messageText);
+            sentDetails.add(this);
+            totalMessagesSent++;
+        } else if (option.equalsIgnoreCase("Store")) {
+            storedMessages = addToArray(storedMessages, messageText);
+            storedDetails.add(this);
+            storeMessage();
+        } else if (option.equalsIgnoreCase("Disregard")) {
+            disregardedMessages = addToArray(disregardedMessages, messageText);
         } else {
-            int excess = this.messageText.length() - 250;
-            return "Message exceeds 250 characters by " + excess + "; please reduce the size.";
+            return "Invalid option.";
         }
-    }
 
-    public String SentMessage() {
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("\nOptions: 1) Send Message 2) Disregard Message 3) Store Message");
-        System.out.print("Choose: ");
-        int choice = scanner.nextInt();
-        scanner.nextLine(); 
-        
-        switch (choice) {
-            case 1:
-                totalMessages++;
-                sentMessagesList.add(this.messageText);
-                saveToJson("Sent");
-                return "Message successfully sent.";
-            case 2:
-                saveToJson("Disregard");
-                return "Press 0 to delete the message.";
-            case 3:
-                saveToJson("Stored");
-                return "Message successfully stored.";
-            default:
-                return "Invalid option.";
-        }
+        messageHashes = addToArray(messageHashes, messageHash);
+        messageIDs = addToArray(messageIDs, messageID);
+        allDetails.add(this);
+        processed = true;
+
+        if (option.equalsIgnoreCase("Send")) return "Message successfully sent.";
+        if (option.equalsIgnoreCase("Store")) return "Message successfully stored.";
+        return "Message disregarded.";
     }
 
     public String printMessages() {
-        if (sentMessagesList.isEmpty()) {
-            return "No messages sent yet.";
-        }
+        if (sentMessages.length == 0) return "No messages sent yet.";
         StringBuilder sb = new StringBuilder();
-        for (String msg : sentMessagesList) {
-            sb.append(msg).append("\n");
-        }
+        for (String s : sentMessages) sb.append(s).append("\n");
         return sb.toString();
     }
 
     public int returnTotalMessages() {
-        return totalMessages;
+        return totalMessagesSent;
     }
 
-    private void saveToJson(String flag) {
-        JSONArray jsonArray = new JSONArray();
-        File file = new File(JSON_FILE);
+    private String escapeJSON(String text) {
+        if (text == null) return "";
+        return text.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+    }
 
-        if (file.exists()) {
-            try (Scanner fileScanner = new Scanner(file)) {
-                StringBuilder jsonContent = new StringBuilder();
-                while (fileScanner.hasNextLine()) {
-                    jsonContent.append(fileScanner.nextLine());
+    public void storeMessage() {
+        String json = "{"
+                + "\"messageID\":\"" + escapeJSON(messageID) + "\","
+                + "\"messageNumber\":" + messageNumber + ","
+                + "\"sender\":\"" + escapeJSON(sender) + "\","
+                + "\"recipient\":\"" + escapeJSON(recipient) + "\","
+                + "\"message\":\"" + escapeJSON(messageText) + "\","
+                + "\"hash\":\"" + escapeJSON(messageHash) + "\""
+                + "}";
+        try (FileWriter w = new FileWriter(FILE_NAME, true)) {
+            w.write(json);
+            w.write(System.lineSeparator());
+        } catch (IOException e) {
+            System.out.println("Could not store message: " + e.getMessage());
+        }
+    }
+
+    private static String getJSONValue(String json, String key) {
+        Pattern p = Pattern.compile("\"" + Pattern.quote(key) + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
+        Matcher m = p.matcher(json);
+        if (m.find()) return unescapeJSON(m.group(1));
+        return "";
+    }
+
+    private static String unescapeJSON(String text) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '\\' && i + 1 < text.length()) {
+                char n = text.charAt(++i);
+                switch (n) {
+                    case 'n': sb.append('\n'); break;
+                    case 'r': sb.append('\r'); break;
+                    case 't': sb.append('\t'); break;
+                    default: sb.append(n); break;
                 }
-                if (jsonContent.length() > 0) {
-                    jsonArray = new JSONArray(jsonContent.toString());
-                }
-            } catch (FileNotFoundException e) {
-                System.out.println("File error.");
+            } else sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    public static void loadStoredMessagesFromFile() {
+        storedMessages = new String[0];
+        storedDetails.clear();
+        File f = new File(FILE_NAME);
+        if (!f.exists()) return;
+        try (BufferedReader r = new BufferedReader(new FileReader(f))) {
+            String line;
+            while ((line = r.readLine()) != null) {
+                if (line.trim().isEmpty()) continue;
+                Message msg = new Message();
+                msg.setMessageID(getJSONValue(line, "messageID"));
+                msg.setSender(getJSONValue(line, "sender"));
+                msg.setRecipient(getJSONValue(line, "recipient"));
+                msg.setMessageText(getJSONValue(line, "message"));
+                msg.messageHash = getJSONValue(line, "hash");
+                msg.processed = true;
+                String num = line.replaceAll(".*\"messageNumber\"\\s*:\\s*(\\d+).*", "$1");
+                try { msg.setMessageNumber(Integer.parseInt(num)); }
+                catch (NumberFormatException e) { msg.setMessageNumber(0); }
+                storedMessages = addToArray(storedMessages, msg.getMessageText());
+                storedDetails.add(msg);
+            }
+        } catch (IOException e) {
+            System.out.println("Error reading JSON: " + e.getMessage());
+        }
+    }
+
+    public static String displayStoredSendersAndRecipients() {
+        loadStoredMessagesFromFile();
+        if (storedDetails.isEmpty()) return "No stored messages available.";
+        StringBuilder sb = new StringBuilder();
+        for (Message m : storedDetails) {
+            sb.append("Sender: ").append(m.sender)
+              .append("\nRecipient: ").append(m.recipient)
+              .append("\n--------------------\n");
+        }
+        return sb.toString();
+    }
+
+    public static String getLongestMessage() {
+        String longest = "";
+        for (Message m : allDetails) if (m.messageText.length() > longest.length()) longest = m.messageText;
+        for (Message m : storedDetails) if (m.messageText.length() > longest.length()) longest = m.messageText;
+        return longest.isEmpty() ? "No messages available." : longest;
+    }
+
+    public static String searchMessageByID(String id) {
+        loadStoredMessagesFromFile();
+        for (Message m : allDetails)
+            if (m.messageID.equals(id)) return "Recipient: " + m.recipient + "\nMessage: " + m.messageText;
+        for (Message m : storedDetails)
+            if (m.messageID.equals(id)) return "Recipient: " + m.recipient + "\nMessage: " + m.messageText;
+        return "Message ID not found.";
+    }
+
+    public static String searchMessagesByRecipient(String recipient) {
+        loadStoredMessagesFromFile();
+        StringBuilder sb = new StringBuilder();
+        for (Message m : allDetails)
+            if (m.recipient.equals(recipient) && !m.isDisregarded())
+                sb.append(m.messageText).append("\n");
+        for (Message m : storedDetails) {
+            if (m.recipient.equals(recipient)) {
+                boolean shown = false;
+                for (Message e : allDetails) if (e.messageID.equals(m.messageID)) { shown = true; break; }
+                if (!shown) sb.append(m.messageText).append("\n");
             }
         }
+        if (sb.length() == 0) return "No messages found for this recipient.";
+        return sb.toString().trim();
+    }
 
-        JSONObject msgObj = new JSONObject();
-        msgObj.put("MessageID", this.messageID);
-        msgObj.put("MessageNumber", this.messageNumber);
-        msgObj.put("Recipient", this.recipient);
-        msgObj.put("Message", this.messageText);
-        msgObj.put("Hash", this.messageHash);
-        msgObj.put("Flag", flag);
-        
-        jsonArray.put(msgObj);
+    private boolean isDisregarded() {
+        for (String s : disregardedMessages) if (s.equals(messageText)) return true;
+        return false;
+    }
 
-        try (FileWriter writer = new FileWriter(JSON_FILE)) {
-            writer.write(jsonArray.toString(4));
+    public static String deleteMessageByHash(String hash) {
+        loadStoredMessagesFromFile();
+        for (int i = 0; i < storedDetails.size(); i++) {
+            Message m = storedDetails.get(i);
+            if (m.messageHash.equals(hash)) {
+                String deleted = m.messageText;
+                storedDetails.remove(i);
+                storedMessages = new String[0];
+                for (Message s : storedDetails) storedMessages = addToArray(storedMessages, s.messageText);
+                updateJSONFile();
+                return "Message: \"" + deleted + "\" successfully deleted.";
+            }
+        }
+        return "Message hash not found.";
+    }
+
+    private static void updateJSONFile() {
+        try (FileWriter w = new FileWriter(FILE_NAME, false)) {
+            for (Message m : storedDetails) {
+                String json = "{"
+                        + "\"messageID\":\"" + m.messageID + "\","
+                        + "\"messageNumber\":" + m.messageNumber + ","
+                        + "\"sender\":\"" + m.sender + "\","
+                        + "\"recipient\":\"" + m.recipient + "\","
+                        + "\"message\":\"" + m.messageText + "\","
+                        + "\"hash\":\"" + m.messageHash + "\""
+                        + "}";
+                w.write(json);
+                w.write(System.lineSeparator());
+            }
         } catch (IOException e) {
-            System.out.println("Error saving to file.");
-            
+            System.out.println("Error updating JSON: " + e.getMessage());
         }
     }
-    
+
+    public static String displayReport() {
+        loadStoredMessagesFromFile();
+        StringBuilder sb = new StringBuilder();
+        sb.append("========== MESSAGE REPORT ==========\n");
+        int count = 0;
+        for (Message m : sentDetails) {
+            sb.append("\nMessage Hash: ").append(m.messageHash)
+              .append("\nRecipient: ").append(m.recipient)
+              .append("\nMessage: ").append(m.messageText)
+              .append("\n--------------------\n");
+            count++;
+        }
+        for (Message m : storedDetails) {
+            boolean shown = false;
+            for (Message s : sentDetails) if (s.messageID.equals(m.messageID)) { shown = true; break; }
+            if (!shown) {
+                sb.append("\nMessage Hash: ").append(m.messageHash)
+                  .append("\nRecipient: ").append(m.recipient)
+                  .append("\nMessage: ").append(m.messageText)
+                  .append("\n--------------------\n");
+                count++;
+            }
+        }
+        return count == 0 ? "No messages available for the report." : sb.toString();
+    }
+
+    public void setMessageID(String id) { this.messageID = id; }
+    public void setMessageNumber(int n) { this.messageNumber = n; }
+    public void setMessageText(String t) { this.messageText = t; }
+    public void setRecipient(String r) { this.recipient = r; }
+    public void setSender(String s) { this.sender = s; }
     public String getMessageID() { return messageID; }
     public String getMessageHash() { return messageHash; }
-    public String getRecipient() { return recipient; }
     public String getMessageText() { return messageText; }
-    public void setMessageID(String id) { this.messageID = id; }
-    
-}
+    public String getRecipient() { return recipient; }
 
+    public static void clearData() {
+        sentMessages = new String[0];
+        disregardedMessages = new String[0];
+        storedMessages = new String[0];
+        messageHashes = new String[0];
+        messageIDs = new String[0];
+        sentDetails.clear();
+        storedDetails.clear();
+        allDetails.clear();
+        totalMessagesSent = 0;
+        File f = new File(FILE_NAME);
+        if (f.exists()) f.delete();
+    }
+}
